@@ -9,8 +9,15 @@
 
 // ---- 名称 ----
 const FORM_TITLE = "ClaudeCode・AI活用 実態アンケート";
-const FORM_DESCRIPTION =
-  "ClaudeCode・AIツールの利用状況、効果、および今後の改善点に関するフィードバックを収集するためのアンケートです。皆様のご協力をお願いいたします。";
+const FORM_DESCRIPTION = [
+  "ClaudeCode・AIツールの利用状況、効果、および今後の改善点に関するフィードバックを収集するためのアンケートです。皆様のご協力をお願いいたします。",
+  "",
+  "【回答の使い道】",
+  "・利用状況や困りごとを踏まえた、ナレッジ記事のテーマ選定",
+  "・社内マーケットプレイス（スキル・プラグイン）の整備・優先度の決定",
+  "・AIラボチームのサポート計画と、AI活用の進捗報告",
+  "個人の評価には使用しません。",
+].join("\n");
 
 // ---- スプレッドシート ----
 const TAB_INTERNAL = "社内";
@@ -107,9 +114,17 @@ const INTERNAL_QUESTIONS = [
     required: true,
   },
   {
-    type: "paragraph",
+    type: "checkbox",
     title:
-      "3-1. 質問3で「利用できていない」と回答された方は、その理由を具体的にお教えください。",
+      "3-1. 質問3で「利用できていない」と回答された方は、その理由をすべて選択してください。",
+    choices: [
+      "業務でコードを書く機会が少ない",
+      "使い方が分からない・学ぶ時間がない",
+      "環境構築やセットアップでつまずいた",
+      "案件・客先の制約で利用できない",
+      "効果を感じられなかった",
+    ],
+    other: true,
   },
   {
     type: "radio",
@@ -166,11 +181,24 @@ const INTERNAL_QUESTIONS = [
     required: true,
   },
   {
-    type: "radio",
+    type: "checkbox",
     title:
-      "11. ClaudeCodeの利用に関して、セキュリティや品質面での懸念はありますか？",
-    choices: YN,
+      "11. ClaudeCodeの利用に関して、セキュリティや品質面で懸念があれば、すべて選択してください。",
+    choices: [
+      "機密情報・顧客情報を入力してしまうリスク",
+      "生成コードの品質・バグ",
+      "生成コードのライセンス・著作権",
+      "レビュー負荷の増加",
+      "生成内容を理解しないまま使ってしまうこと",
+      "特になし",
+    ],
+    other: true,
     required: true,
+  },
+  {
+    type: "paragraph",
+    title:
+      "11-1. 質問11で懸念を選択した方は、具体的な内容や背景（例: 〇〇の案件で△△が起きそう）を教えてください。",
   },
   {
     type: "checkbox",
@@ -214,8 +242,15 @@ const INTERNAL_QUESTIONS = [
     ].join("\n"),
   },
   {
+    type: "paragraph",
+    title:
+      "15. ClaudeCodeの利用で困っていること・つまずいていることがあれば教えてください。（任意）",
+    helpText:
+      "使い方が分からない機能、うまく動かない場面、運用ルールで迷っていることなど、どんな内容でも構いません。ナレッジ記事のテーマ選定に活用します。",
+  },
+  {
     type: "checkbox",
-    title: "15. AIラボチームに期待するサポートをすべて選択してください。",
+    title: "16. AIラボチームに期待するサポートをすべて選択してください。",
     helpText: [
       "AIラボチームは、ClaudeCodeをはじめとするAIツールの社内活用を推進するチームです。ハーネス（開発環境・ルール）の整備、スキル・プラグインの提供、ナレッジ記事の発信などを行っています。",
       "GitHub：https://github.com/dreamcareer/claude-marketplace",
@@ -233,12 +268,12 @@ const INTERNAL_QUESTIONS = [
   {
     type: "paragraph",
     title:
-      "16. その他 ClaudeCodeを活用して「うまくいったプロジェクト」や「具体的な改善事例」があれば、簡単にお教えください。（任意）",
+      "17. その他 ClaudeCodeを活用して「うまくいったプロジェクト」や「具体的な改善事例」があれば、簡単にお教えください。（任意）",
   },
   {
     type: "paragraph",
     title:
-      "17. 他のLLM（例: Copilot, Gemini, Codexなど）とClaudeCodeを比べたときに、特に思うことがあれば記載してください。（任意）",
+      "18. 他のLLM（例: Copilot, Gemini, Codexなど）とClaudeCodeを比べたときに、特に思うことがあれば記載してください。（任意）",
   },
 ];
 
