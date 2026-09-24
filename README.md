@@ -1,19 +1,21 @@
-# questionnaire-2 — ClaudeCode・AI活用 実態アンケート（GAS / clasp）
+# ClaudeCode・AI活用 実態アンケート
 
 社内 / 外部案件で分岐する Google フォームを作成し、回答を所属ごとに
 スプレッドシートの「社内」「外部案件」タブへ振り分ける Apps Script プロジェクト。
 
-スクリプトは **回答用スプレッドシートに紐づくコンテナバインドスクリプト** として動作する。
+スクリプトは **回答用スプレッドシートに紐づくコンテナバインドスクリプト**。
 スプレッドシートは再生成せず、常に紐づいているものを更新する。
 
 ## 構成
 
 ```text
-.clasp.json          clasp 設定（scriptId / parentId=スプレッドシート / rootDir=src / 読み込み順）
+.clasp.json          clasp 設定（scriptId / parentId=スプレッドシート / rootDir=src / push 順）
+.claspignore         appsscript.json と *.js のみ push
+package.json         clasp ラッパーの npm scripts
 src/
-  appsscript.json    マニフェスト
-  constants.js       定数（名称・質問定義・メニュー名）
-  utils.js           共通関数（フォーム探索・生成、シート整形、回答先の再連携、トリガー）
+  appsscript.json    マニフェスト（Asia/Tokyo, V8）
+  constants.js       定数（名称・タブ名・メニュー名・質問定義）
+  utils.js           共通関数（フォーム探索／生成、シート整形、回答先の再連携、トリガー）
   main.js            実行関数（onOpen / createSurvey / onSubmit）
 ```
 
@@ -21,15 +23,17 @@ src/
 
 ```sh
 npm install -g @google/clasp   # 未導入の場合
-clasp login                    # ブラウザで Google 認証
-clasp push                     # src/ を Apps Script プロジェクトへ反映
-clasp open                     # ブラウザでエディタを開く
+npm run login                  # clasp login
+npm run push                   # src/ を Apps Script へ反映
+npm run open                   # ブラウザでエディタを開く
 ```
+
+他に `npm run pull` / `npm run status` がある。
 
 ## 実行
 
 スプレッドシートを開き、メニュー「アンケート管理 > フォームを作成／更新」を選ぶ
-（GAS エディタで `createSurvey` を直接実行してもよい）。
+（GAS エディタで `createSurvey` を直接実行してもよい）。何度実行しても同じ結果になる。
 
 - **フォーム** は次の順で決まる
   1. このスプレッドシートに回答を送っている既存フォーム → 項目を全て作り直して更新
@@ -38,12 +42,13 @@ clasp open                     # ブラウザでエディタを開く
 - **スプレッドシート** は紐づいているものをそのまま使う
   - 「社内」「外部案件」タブのヘッダー行を上書き（既存の回答行は保持）
   - 回答原本の「フォームの回答 N」シートは連携を張り直して作り直す。
-    旧シートは回答が無ければ削除、あれば `（旧）yyyyMMdd-HHmmss` を付けて保持
+    旧シートは回答が無ければ削除、あれば `（旧）` を付けて保持
 - `onSubmit` トリガーは毎回作り直される（重複登録なし）
 
-質問を変更するときは `src/constants.js` を編集し、`clasp push` → メニューから再実行する。
+## フォームの内容
 
-## 注意
-
-- 以前の単体スクリプト（standalone）からトリガーが残っていると `onSubmit` が二重に動く。
-  移行後は旧プロジェクトのトリガーを削除すること。
+- メールアドレスを自動収集
+- 最初に「現在の主な所属」を選択し、社内PJ / 外部案件のセクションへ分岐
+  - 社内PJ: チーム名 + 利用歴・利用時間・効果・機能・要望など 17 問
+  - 外部案件: 案件概要・AI利用ルール・利用ツール・効果・要望など 7 問
+- 社内セクション回答後は外部案件セクションを飛ばして送信
