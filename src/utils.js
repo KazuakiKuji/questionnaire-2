@@ -68,12 +68,42 @@ function getOrCreateSpreadsheet_(folder) {
 // Form
 // ---------------------------------------------------------------------------
 
-/** フォーム内の全項目（ページ区切り含む）を削除する。 */
+/**
+ * フォーム内の全項目（ページ区切り含む）を削除する。
+ * 他の項目から「遷移先」として参照されているページ区切りは削除できず
+ * "Invalid data updating form." になるため、先に遷移設定を解除してから
+ * 「ページ区切り以外 → ページ区切り」の順で削除する。
+ */
 function clearFormItems_(form) {
   const items = form.getItems();
-  for (let i = items.length - 1; i >= 0; i--) {
-    form.deleteItem(items[i]);
-  }
+
+  // 1. ページ遷移の参照を全て解除する
+  items.forEach((item) => {
+    switch (item.getType()) {
+      case FormApp.ItemType.PAGE_BREAK:
+        item.asPageBreakItem().setGoToPage(FormApp.PageNavigationType.CONTINUE);
+        break;
+      case FormApp.ItemType.MULTIPLE_CHOICE:
+        resetChoiceNavigation_(item.asMultipleChoiceItem());
+        break;
+      case FormApp.ItemType.LIST:
+        resetChoiceNavigation_(item.asListItem());
+        break;
+      default:
+        break;
+    }
+  });
+
+  // 2. ページ区切り以外を削除 → 3. ページ区切りを削除
+  const isPageBreak = (item) => item.getType() === FormApp.ItemType.PAGE_BREAK;
+  items.filter((i) => !isPageBreak(i)).forEach((i) => form.deleteItem(i));
+  items.filter(isPageBreak).forEach((i) => form.deleteItem(i));
+}
+
+/** 選択式項目の選択肢から遷移先設定を外す（選択肢の文言はそのまま保持）。 */
+function resetChoiceNavigation_(choiceItem) {
+  const values = choiceItem.getChoices().map((c) => c.getValue());
+  if (values.length > 0) choiceItem.setChoiceValues(values);
 }
 
 /** 質問定義（constants.js のフォーマット）から 1 項目を追加して返す。 */
