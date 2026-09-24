@@ -61,6 +61,7 @@ const PHASES = [
  *   other    : 「その他」欄を表示するか（radio / checkbox のみ）
  *   bounds   : [下限, 上限]（scale のみ）
  *   labels   : [下限ラベル, 上限ラベル]（scale のみ）
+ *   helpText : 質問文の下に表示する補足説明（任意）
  *   required : 必須かどうか
  */
 
@@ -74,7 +75,7 @@ const INTERNAL_QUESTIONS = [
   {
     type: "radio",
     title: "チーム名を教えてください",
-    choices: ["塩見チーム", "吉川チーム", "新井チーム"],
+    choices: ["吉川チーム", "新井チーム"],
     other: true,
     required: true,
   },
@@ -201,11 +202,22 @@ const INTERNAL_QUESTIONS = [
   {
     type: "text",
     title:
-      "14. AIレポートスキルの実行結果があれば、共有URLを記載してください。（任意）",
+      "14. AIレポートスキルの実行結果があれば、教えられる範囲で結果を教えてください（任意）",
+    helpText: [
+      "【AIレポートの作り方】",
+      "1. ターミナルで Claude Code を起動し、セッションを開きます。",
+      "2. プロンプトに /insights と入力して実行します。",
+      "3. 直近のセッション履歴を分析したレポート（利用傾向・よく使う機能・改善提案など）が作成されます。",
+      "レポートの内容や気になった項目を、共有できる範囲で記載してください。",
+    ].join("\n"),
   },
   {
     type: "checkbox",
     title: "15. AIラボチームに期待するサポートをすべて選択してください。",
+    helpText: [
+      "AIラボチームは、ClaudeCodeをはじめとするAIツールの社内活用を推進するチームです。ハーネス（開発環境・ルール）の整備、スキル・プラグインの提供、ナレッジ記事の発信などを行っています。",
+      "GitHub：https://github.com/dreamcareer/claude-marketplace",
+    ].join("\n"),
     choices: [
       "ハーネス導入支援",
       "勉強会・ハンズオン",
@@ -278,15 +290,13 @@ const EXTERNAL_QUESTIONS = [
     type: "paragraph",
     title:
       "6. 社内にも取り入れたいと思った使い方・ルール・ツールがあれば教えてください。",
+    helpText: [
+      "いただいた内容は、AIの社内活用を広める取り組みの一環として整備している社内マーケットプレイス（スキル・プラグインの配布基盤）への導入を検討する参考にさせていただきます。",
+      "GitHub：https://github.com/dreamcareer/claude-marketplace",
+    ].join("\n"),
   },
   {
     type: "paragraph",
     title: "7. 客先でのAI利用で困っていること・制約があれば教えてください。",
-  },
-  {
-    type: "radio",
-    title: "8. 社内で進めているハーネス整備の取り組みに関心はありますか？",
-    choices: ["ぜひ聞きたい", "機会があれば聞きたい", "特に関心はない"],
-    required: true,
   },
 ];
