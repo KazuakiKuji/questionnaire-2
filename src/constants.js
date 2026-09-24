@@ -192,6 +192,7 @@ const INTERNAL_QUESTIONS = [
     title:
       "13. 開発プロセスにおいて、ClaudeCodeが最も役立ったフェーズをすべて選択してください。",
     choices: PHASES,
+    other: true,
     required: true,
   },
   {
@@ -200,7 +201,7 @@ const INTERNAL_QUESTIONS = [
       "13-1. 質問13で選択したフェーズ（最も役立った点）について、具体的な事例を教えてください。",
   },
   {
-    type: "text",
+    type: "paragraph",
     title:
       "14. AIレポートスキルの実行結果があれば、教えられる範囲で結果を教えてください（任意）",
     helpText: [
@@ -209,6 +210,7 @@ const INTERNAL_QUESTIONS = [
       "2. プロンプトに /insights と入力して実行します。",
       "3. 直近のセッション履歴を分析したレポート（利用傾向・よく使う機能・改善提案など）が作成されます。",
       "レポートの内容や気になった項目を、共有できる範囲で記載してください。",
+      "※英語のHTMLで出力されるので、和訳・要約したものを提示いただけると幸いです。",
     ].join("\n"),
   },
   {
