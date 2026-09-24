@@ -1,0 +1,5 @@
+{
+  "scriptId": "1hDtDYpFMLhWwx4l9QNLb2a05l9crI0EtGYUdhDNHqNJe8UTTcf0dCAhk",
+  "rootDir": "src",
+  "filePushOrder": ["src/constants.js", "src/utils.js", "src/main.js"]
+}

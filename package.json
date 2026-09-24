@@ -1,0 +1,14 @@
+{
+  "name": "questionnaire-part2",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ClaudeCode・AI活用 実態アンケート（Google Apps Script / clasp）",
+  "scripts": {
+    "login": "clasp login",
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "open": "clasp open",
+    "status": "clasp status",
+    "run:setup": "clasp run createSurvey"
+  }
+}
