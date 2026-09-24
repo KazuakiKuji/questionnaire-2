@@ -1,21 +1,30 @@
 /**
  * ===== 実行関数 =====
- *   createSurvey : フォーム／スプレッドシートを作成または更新する（手動実行）
+ *   onOpen       : スプレッドシートを開いた時にカスタムメニューを追加する
+ *   createSurvey : フォームを作成または更新し、このスプレッドシートを回答先にする
  *   onSubmit     : フォーム送信時トリガー（createSurvey が自動登録）
  *
- * createSurvey はスクリプトファイルと同じ Drive フォルダ（= 現在ディレクトリ）を見て、
- *   - Google フォームがあれば項目を全て作り直して更新、なければ新規作成
- *   - Google スプレッドシートがあればヘッダー行を更新、なければ新規作成
- * を行う。新規作成したファイルは同じフォルダへ配置する。
+ * このスクリプトは回答用スプレッドシートに紐づくコンテナバインドスクリプト。
+ * スプレッドシートは再生成せず、常に紐づいているものを更新する。
+ * フォームは「このスプレッドシートに連携済みのもの → 同じフォルダのもの → 新規作成」の順で決める。
  */
 
-/** フォーム・スプレッドシートを作成または更新する。何度実行しても同じ結果になる。 */
+/** スプレッドシートを開いた時にメニューを追加する。 */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu(MENU_NAME)
+    .addItem(MENU_ITEM_CREATE, "createSurvey")
+    .addToUi();
+}
+
+/** フォームを作成または更新する。何度実行しても同じ結果になる。 */
 function createSurvey() {
-  const folder = getScriptFolder_();
-  Logger.log(`対象フォルダ: ${folder.getName()}`);
+  const ss = getBoundSpreadsheet_();
+  const folder = getContainerFolder_(ss);
+  Logger.log(`対象スプレッドシート: ${ss.getName()} / フォルダ: ${folder.getName()}`);
 
   // ----- フォーム -----
-  const { form, created: formCreated } = getOrCreateForm_(folder);
+  const { form, created: formCreated } = getOrCreateForm_(ss, folder);
   if (!formCreated) clearFormItems_(form);
   form.setTitle(FORM_TITLE).setDescription(FORM_DESCRIPTION).setCollectEmail(true);
 
@@ -36,22 +45,20 @@ function createSurvey() {
     affiliation.createChoice(EXTERNAL_LABEL, external.page),
   ]);
 
-  // ----- スプレッドシート -----
-  const { ss, created: ssCreated } = getOrCreateSpreadsheet_(folder);
-  if (ssCreated) ss.getSheets()[0].setName(TAB_INTERNAL);
-
+  // ----- スプレッドシート（紐づいているものを更新）-----
   const titlesOf = (items) => items.map((i) => i.getTitle());
   writeHeader_(ensureSheet_(ss, TAB_INTERNAL), [...BASE_HEADERS, ...titlesOf(internal.items)]);
   writeHeader_(ensureSheet_(ss, TAB_EXTERNAL), [...BASE_HEADERS, ...titlesOf(external.items)]);
-  linkFormToSpreadsheet_(form, ss); // 全回答の原本タブも自動生成される
+  relinkFormToSpreadsheet_(form, ss); // 回答原本の「フォームの回答 N」シートを作り直す
 
   // ----- プロパティ / トリガー -----
-  saveSurveyProps_(ss, affiliation, internal.items, external.items);
+  saveSurveyProps_(affiliation, internal.items, external.items);
   resetSubmitTrigger_(form);
 
   Logger.log(`フォーム編集URL: ${form.getEditUrl()}`);
   Logger.log(`回答URL: ${form.getPublishedUrl()}`);
   Logger.log(`スプレッドシート: ${ss.getUrl()}`);
+  ss.toast(`${formCreated ? "作成" : "更新"}しました: ${form.getTitle()}`, MENU_NAME, 10);
 }
 
 /** 送信時トリガー: 所属に応じて「社内」「外部案件」タブへ 1 行追記する。 */
@@ -68,7 +75,7 @@ function onSubmit(e) {
   const isExternal = answers[p.getProperty(PROP.AFFIL_ID)] === EXTERNAL_LABEL;
   const ids = JSON.parse(p.getProperty(isExternal ? PROP.EXT_IDS : PROP.INT_IDS));
 
-  SpreadsheetApp.openById(p.getProperty(PROP.SS_ID))
+  getBoundSpreadsheet_()
     .getSheetByName(isExternal ? TAB_EXTERNAL : TAB_INTERNAL)
     .appendRow([
       res.getTimestamp(),

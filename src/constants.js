@@ -1,12 +1,14 @@
 /**
  * ===== 定数 =====
- * フォーム・スプレッドシートの名称、質問定義などをここで一元管理する。
+ * フォームの名称、質問定義などをここで一元管理する。
  * 質問を追加・変更する場合はこのファイルのみ編集し、createSurvey を再実行する。
+ *
+ * このスクリプトは回答用スプレッドシートに紐づくコンテナバインドスクリプトとして動作する。
+ * スプレッドシートは再生成せず、常に紐づいているものを更新する。
  */
 
 // ---- 名称 ----
 const FORM_TITLE = "ClaudeCode・AI活用 実態アンケート";
-const SS_TITLE = FORM_TITLE + "（回答）";
 const FORM_DESCRIPTION =
   "ClaudeCode・AIツールの利用状況、効果、および今後の改善点に関するフィードバックを収集するためのアンケートです。皆様のご協力をお願いいたします。";
 
@@ -14,6 +16,12 @@ const FORM_DESCRIPTION =
 const TAB_INTERNAL = "社内";
 const TAB_EXTERNAL = "外部案件";
 const BASE_HEADERS = ["タイムスタンプ", "メールアドレス"];
+// フォーム再構築で不要になった旧「フォームの回答 N」シートに付ける接尾辞（回答がある場合のみ改名して保持）
+const ARCHIVED_SHEET_SUFFIX = "（旧）";
+
+// ---- スプレッドシートのメニュー ----
+const MENU_NAME = "アンケート管理";
+const MENU_ITEM_CREATE = "フォームを作成／更新";
 
 // ---- 分岐（所属）----
 const AFFILIATION_TITLE = "現在の主な所属を教えてください";
@@ -23,7 +31,6 @@ const EXTERNAL_LABEL = "外部案件";
 // ---- トリガー / スクリプトプロパティ ----
 const TRIGGER_HANDLER = "onSubmit";
 const PROP = {
-  SS_ID: "SS_ID",
   AFFIL_ID: "AFFIL_ID",
   INT_IDS: "INT_IDS",
   EXT_IDS: "EXT_IDS",

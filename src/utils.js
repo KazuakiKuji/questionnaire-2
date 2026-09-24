@@ -6,15 +6,42 @@
  */
 
 // ---------------------------------------------------------------------------
-// Drive
+// Spreadsheet（バインド先）
 // ---------------------------------------------------------------------------
 
-/** このスクリプトファイルが置かれている Drive フォルダを返す（= 現在ディレクトリ）。 */
-function getScriptFolder_() {
-  const scriptFile = DriveApp.getFileById(ScriptApp.getScriptId());
-  const parents = scriptFile.getParents();
+/** このスクリプトが紐づいているスプレッドシートを返す（再生成はしない）。 */
+function getBoundSpreadsheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error(
+      "スプレッドシートに紐づいていません。回答用スプレッドシートのコンテナバインドスクリプトとして実行してください。",
+    );
+  }
+  return ss;
+}
+
+/** スプレッドシートが置かれている Drive フォルダを返す（= 現在ディレクトリ）。 */
+function getContainerFolder_(ss) {
+  const parents = DriveApp.getFileById(ss.getId()).getParents();
   return parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
 }
+
+/** 指定名のシートを取得。なければ末尾に追加する。 */
+function ensureSheet_(ss, name) {
+  return ss.getSheetByName(name) || ss.insertSheet(name);
+}
+
+/** 1 行目をヘッダーで上書きし、固定行にする（2 行目以降の既存データは保持）。 */
+function writeHeader_(sheet, headers) {
+  const width = Math.max(sheet.getLastColumn(), headers.length, 1);
+  sheet.getRange(1, 1, 1, width).clearContent();
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
+  sheet.setFrozenRows(1);
+}
+
+// ---------------------------------------------------------------------------
+// Drive / Form の取得
+// ---------------------------------------------------------------------------
 
 /**
  * フォルダ内から指定 MIME タイプのファイルを探す。
@@ -38,34 +65,47 @@ function findFileInFolder_(folder, mimeType, name) {
   return null;
 }
 
-/** フォルダ内の既存フォームを開く。なければ新規作成して同フォルダへ移動する。 */
-function getOrCreateForm_(folder) {
+/**
+ * フォームを取得する。優先順位:
+ *   1. スプレッドシートに現在紐づいているフォーム（回答連携シートから逆引き）
+ *   2. 同じフォルダ内のフォーム
+ *   3. 新規作成して同じフォルダへ配置
+ */
+function getOrCreateForm_(ss, folder) {
+  const linked = findLinkedForm_(ss);
+  if (linked) {
+    Logger.log(`紐づいている既存フォームを更新します: ${linked.getTitle()}`);
+    return { form: linked, created: false };
+  }
+
   const file = findFileInFolder_(folder, MimeType.GOOGLE_FORMS, FORM_TITLE);
   if (file) {
-    Logger.log(`既存フォームを更新します: ${file.getName()}`);
+    Logger.log(`同じフォルダの既存フォームを更新します: ${file.getName()}`);
     return { form: FormApp.openById(file.getId()), created: false };
   }
+
   const form = FormApp.create(FORM_TITLE);
   DriveApp.getFileById(form.getId()).moveTo(folder);
   Logger.log(`フォームを新規作成しました: ${FORM_TITLE}`);
   return { form, created: true };
 }
 
-/** フォルダ内の既存スプレッドシートを開く。なければ新規作成して同フォルダへ移動する。 */
-function getOrCreateSpreadsheet_(folder) {
-  const file = findFileInFolder_(folder, MimeType.GOOGLE_SHEETS, SS_TITLE);
-  if (file) {
-    Logger.log(`既存スプレッドシートを更新します: ${file.getName()}`);
-    return { ss: SpreadsheetApp.openById(file.getId()), created: false };
+/** 回答連携シートの URL から、このスプレッドシートに回答を送っているフォームを返す。なければ null。 */
+function findLinkedForm_(ss) {
+  for (const sheet of ss.getSheets()) {
+    const url = sheet.getFormUrl();
+    if (!url) continue;
+    try {
+      return FormApp.openByUrl(url);
+    } catch (e) {
+      Logger.log(`連携フォームを開けませんでした（${sheet.getName()}）: ${e.message}`);
+    }
   }
-  const ss = SpreadsheetApp.create(SS_TITLE);
-  DriveApp.getFileById(ss.getId()).moveTo(folder);
-  Logger.log(`スプレッドシートを新規作成しました: ${SS_TITLE}`);
-  return { ss, created: true };
+  return null;
 }
 
 // ---------------------------------------------------------------------------
-// Form
+// Form の構築
 // ---------------------------------------------------------------------------
 
 /**
@@ -149,34 +189,48 @@ function addSection_(form, section, questions) {
   return { page, items };
 }
 
-/** フォームの回答先を指定スプレッドシートに設定する（既に同じなら何もしない）。 */
-function linkFormToSpreadsheet_(form, ss) {
+// ---------------------------------------------------------------------------
+// Form ⇄ Spreadsheet の連携
+// ---------------------------------------------------------------------------
+
+/**
+ * フォームの回答先をこのスプレッドシートに（再）設定する。
+ * 項目を作り直すと既存の「フォームの回答 N」シートに旧列が残り
+ * 「列名が重複しています」となるため、連携を一度解除して作り直す。
+ * 旧連携シートは、回答が無ければ削除、あれば改名して保持する。
+ */
+function relinkFormToSpreadsheet_(form, ss) {
+  const formId = form.getId();
+  const oldSheets = ss.getSheets().filter((s) => {
+    const url = s.getFormUrl();
+    return url && url.indexOf(formId) !== -1;
+  });
+
   let currentId = null;
   try {
     currentId = form.getDestinationId();
   } catch (e) {
     currentId = null; // 未設定
   }
-  if (currentId === ss.getId()) return;
   if (currentId) form.removeDestination();
   form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
-}
+  SpreadsheetApp.flush();
 
-// ---------------------------------------------------------------------------
-// Spreadsheet
-// ---------------------------------------------------------------------------
-
-/** 指定名のシートを取得。なければ末尾に追加する。 */
-function ensureSheet_(ss, name) {
-  return ss.getSheetByName(name) || ss.insertSheet(name);
-}
-
-/** 1 行目をヘッダーで上書きし、固定行にする（2 行目以降の既存データは保持）。 */
-function writeHeader_(sheet, headers) {
-  const width = Math.max(sheet.getLastColumn(), headers.length, 1);
-  sheet.getRange(1, 1, 1, width).clearContent();
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
-  sheet.setFrozenRows(1);
+  oldSheets.forEach((sheet) => {
+    if (sheet.getLastRow() <= 1) {
+      Logger.log(`旧連携シートを削除: ${sheet.getName()}`);
+      ss.deleteSheet(sheet);
+    } else {
+      const stamp = Utilities.formatDate(
+        new Date(),
+        Session.getScriptTimeZone(),
+        "yyyyMMdd-HHmmss",
+      );
+      const newName = `${sheet.getName()}${ARCHIVED_SHEET_SUFFIX}${stamp}`;
+      Logger.log(`旧連携シートに回答があるため改名して保持: ${newName}`);
+      sheet.setName(newName);
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -192,9 +246,8 @@ function resetSubmitTrigger_(form) {
 }
 
 /** onSubmit で使う ID 群をスクリプトプロパティへ保存する。 */
-function saveSurveyProps_(ss, affiliation, internalItems, externalItems) {
+function saveSurveyProps_(affiliation, internalItems, externalItems) {
   const props = {};
-  props[PROP.SS_ID] = ss.getId();
   props[PROP.AFFIL_ID] = String(affiliation.getId());
   props[PROP.INT_IDS] = JSON.stringify(internalItems.map((i) => i.getId()));
   props[PROP.EXT_IDS] = JSON.stringify(externalItems.map((i) => i.getId()));

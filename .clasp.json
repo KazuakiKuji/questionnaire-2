@@ -1,5 +1,6 @@
 {
-  "scriptId": "1hDtDYpFMLhWwx4l9QNLb2a05l9crI0EtGYUdhDNHqNJe8UTTcf0dCAhk",
+  "scriptId": "1tYQ1sKdUbeMnHmOgqMZEmJ-8jgPQkJwUaKRqEnkonef50i3-1Q5nucM-",
+  "parentId": ["13KeptfhZ5IddqM5wJczvA8NYXwXDwaskKdGlCPjykds"],
   "rootDir": "src",
   "filePushOrder": ["src/constants.js", "src/utils.js", "src/main.js"]
 }
