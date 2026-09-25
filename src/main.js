@@ -26,7 +26,11 @@ function createSurvey() {
   // ----- フォーム -----
   const { form, created: formCreated } = getOrCreateForm_(ss, folder);
   if (!formCreated) clearFormItems_(form);
-  form.setTitle(FORM_TITLE).setDescription(FORM_DESCRIPTION).setCollectEmail(true);
+  // 匿名回答を可能にするため標準のメール収集は使わず、任意入力の項目にする
+  form.setTitle(FORM_TITLE).setDescription(FORM_DESCRIPTION).setCollectEmail(false);
+
+  // 共通: メールアドレス（任意）
+  const email = addEmailItem_(form);
 
   // 共通: 所属（ここで分岐）
   const affiliation = form
@@ -52,7 +56,7 @@ function createSurvey() {
   relinkFormToSpreadsheet_(form, ss); // 回答原本の「フォームの回答 N」シートを作り直す
 
   // ----- プロパティ / トリガー -----
-  saveSurveyProps_(affiliation, internal.items, external.items);
+  saveSurveyProps_(email, affiliation, internal.items, external.items);
   resetSubmitTrigger_(form);
 
   Logger.log(`フォーム編集URL: ${form.getEditUrl()}`);
@@ -72,14 +76,11 @@ function onSubmit(e) {
     answers[r.getItem().getId()] = Array.isArray(v) ? v.join(", ") : v;
   });
 
+  const email = answers[p.getProperty(PROP.EMAIL_ID)] ?? ""; // 任意項目なので未記入なら空
   const isExternal = answers[p.getProperty(PROP.AFFIL_ID)] === EXTERNAL_LABEL;
   const ids = JSON.parse(p.getProperty(isExternal ? PROP.EXT_IDS : PROP.INT_IDS));
 
   getBoundSpreadsheet_()
     .getSheetByName(isExternal ? TAB_EXTERNAL : TAB_INTERNAL)
-    .appendRow([
-      res.getTimestamp(),
-      res.getRespondentEmail(),
-      ...ids.map((id) => answers[id] ?? ""),
-    ]);
+    .appendRow([res.getTimestamp(), email, ...ids.map((id) => answers[id] ?? "")]);
 }

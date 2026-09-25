@@ -109,6 +109,26 @@ function findLinkedForm_(ss) {
 // ---------------------------------------------------------------------------
 
 /**
+ * 任意入力のメールアドレス項目をフォーム先頭に追加する。
+ * 標準のメール収集（setCollectEmail）は必須になってしまうため、匿名回答を許可する目的で
+ * テキスト項目 + メール形式バリデーションで代替する。
+ */
+function addEmailItem_(form) {
+  const item = form
+    .addTextItem()
+    .setTitle(EMAIL_TITLE)
+    .setHelpText(EMAIL_HELP)
+    .setRequired(false);
+  item.setValidation(
+    FormApp.createTextValidation()
+      .setHelpText(EMAIL_VALIDATION_MESSAGE)
+      .requireTextIsEmail()
+      .build(),
+  );
+  return item;
+}
+
+/**
  * フォーム内の全項目（ページ区切り含む）を削除する。
  * 他の項目から「遷移先」として参照されているページ区切りは削除できず
  * "Invalid data updating form." になるため、先に遷移設定を解除してから
@@ -246,8 +266,9 @@ function resetSubmitTrigger_(form) {
 }
 
 /** onSubmit で使う ID 群をスクリプトプロパティへ保存する。 */
-function saveSurveyProps_(affiliation, internalItems, externalItems) {
+function saveSurveyProps_(email, affiliation, internalItems, externalItems) {
   const props = {};
+  props[PROP.EMAIL_ID] = String(email.getId());
   props[PROP.AFFIL_ID] = String(affiliation.getId());
   props[PROP.INT_IDS] = JSON.stringify(internalItems.map((i) => i.getId()));
   props[PROP.EXT_IDS] = JSON.stringify(externalItems.map((i) => i.getId()));
