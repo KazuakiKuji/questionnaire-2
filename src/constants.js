@@ -5,10 +5,23 @@
  *
  * このスクリプトは回答用スプレッドシートに紐づくコンテナバインドスクリプトとして動作する。
  * スプレッドシートは再生成せず、常に紐づいているものを更新する。
+ *
+ * アンケート実施中は createSurvey を実行しない。フォームの項目を全て作り直すため
+ * 既存回答が失われ、振り分け先タブの列もずれる。設問の変更は配布前に済ませる。
  */
 
 // ---- 名称 ----
+
+/**
+ * フォームのタイトル。Drive 上でフォームを名前検索するときのキーにもなる。
+ * @type {string}
+ */
 const FORM_TITLE = "ClaudeCode・AI活用 実態アンケート";
+
+/**
+ * フォーム冒頭に表示する説明文（回答の使い道と匿名性の説明）。
+ * @type {string}
+ */
 const FORM_DESCRIPTION = [
   "ClaudeCode・AIツールの利用状況、効果、および今後の改善点に関するフィードバックを収集するためのアンケートです。皆様のご協力をお願いいたします。",
   "",
@@ -22,31 +35,92 @@ const FORM_DESCRIPTION = [
 ].join("\n");
 
 // ---- スプレッドシート ----
+
+/**
+ * 社内PJ の回答を振り分けるスプレッドシートのタブ名。
+ * @type {string}
+ */
 const TAB_INTERNAL = "社内";
+
+/**
+ * 外部案件の回答を振り分けるスプレッドシートのタブ名。
+ * @type {string}
+ */
 const TAB_EXTERNAL = "外部案件";
+
 // ---- メールアドレス（任意）----
-// Google フォーム標準のメール収集は「収集する＝必須」しか選べないため、
-// 標準収集はオフにし、任意入力のテキスト項目として先頭に置く。
+
+/**
+ * 任意入力のメールアドレス項目のタイトル。振り分け先タブのヘッダーにもそのまま使う。
+ *
+ * Google フォーム標準のメール収集は「収集する＝必須」しか選べないため、
+ * 標準収集はオフにし、任意入力のテキスト項目としてフォーム先頭に置く。
+ * @type {string}
+ */
 const EMAIL_TITLE = "メールアドレス（任意）";
+
+/**
+ * メールアドレス項目の補足説明（任意であることと用途）。
+ * @type {string}
+ */
 const EMAIL_HELP =
   "回答は匿名でも構いません。記入いただいた場合は、回答内容について詳しく伺いたいときの連絡先としてのみ使用します。";
+
+/**
+ * メールアドレス形式のバリデーションに失敗したときに表示する文言。
+ * @type {string}
+ */
 const EMAIL_VALIDATION_MESSAGE = "メールアドレスの形式で入力してください";
 
+/**
+ * 振り分け先タブの先頭ヘッダー。この後ろに各設問のタイトルが並ぶ。
+ * @type {readonly string[]}
+ */
 const BASE_HEADERS = ["タイムスタンプ", EMAIL_TITLE];
-// フォーム再構築で不要になった旧「フォームの回答 N」シートに付ける接尾辞（回答がある場合のみ改名して保持）
+
+/**
+ * フォーム再構築で不要になった旧「フォームの回答 N」シートに付ける接尾辞。
+ * 回答がある場合のみ改名して保持し、回答が無ければ削除する。
+ * @type {string}
+ */
 const ARCHIVED_SHEET_SUFFIX = "（旧）";
 
-// ---- スプレッドシートのメニュー ----
-const MENU_NAME = "アンケート管理";
-const MENU_ITEM_CREATE = "フォームを作成／更新";
-
 // ---- 分岐（所属）----
+
+/**
+ * 最初の分岐設問「現在の主な所属」のタイトル。
+ * @type {string}
+ */
 const AFFILIATION_TITLE = "現在の主な所属を教えてください";
+
+/**
+ * 所属の選択肢: 社内PJ。選ぶと社内セクションへ遷移する。
+ * @type {string}
+ */
 const INTERNAL_LABEL = "社内PJ（ClaudeCode配布あり）";
+
+/**
+ * 所属の選択肢: 外部案件。選ぶと外部案件セクションへ遷移する。
+ * onSubmit で振り分け先タブを決める判定にも使う。
+ * @type {string}
+ */
 const EXTERNAL_LABEL = "外部案件";
 
 // ---- トリガー / スクリプトプロパティ ----
+
+/**
+ * フォーム送信時トリガーのハンドラ関数名。
+ * @type {string}
+ */
 const TRIGGER_HANDLER = "onSubmit";
+
+/**
+ * スクリプトプロパティのキー。createSurvey が保存し、onSubmit が読む。
+ * - EMAIL_ID: メールアドレス項目の ID
+ * - AFFIL_ID: 所属（分岐）項目の ID
+ * - INT_IDS : 社内セクションの項目 ID 配列（JSON 文字列）
+ * - EXT_IDS : 外部案件セクションの項目 ID 配列（JSON 文字列）
+ */
 const PROP = {
   EMAIL_ID: "EMAIL_ID",
   AFFIL_ID: "AFFIL_ID",
@@ -55,7 +129,17 @@ const PROP = {
 };
 
 // ---- 選択肢の共通部品 ----
+
+/**
+ * はい / いいえ の 2 択。
+ * @type {readonly string[]}
+ */
 const YN = ["はい", "いいえ"];
+
+/**
+ * 開発フェーズの選択肢。社内向け設問 14 と外部案件向け設問 4 で共用する。
+ * @type {readonly string[]}
+ */
 const PHASES = [
   "調査",
   "要件定義",
@@ -70,7 +154,10 @@ const PHASES = [
   "特になし",
   "その他",
 ];
-// 設問5-2（社内）: ClaudeCode で短縮できた時間の使い道
+/**
+ * 社内向け設問 5-2: ClaudeCode で短縮できた時間の使い道。
+ * @type {readonly string[]}
+ */
 const TIME_USAGE = [
   "仕様・設計の検討",
   "生成コードのレビュー・理解",
@@ -81,24 +168,43 @@ const TIME_USAGE = [
   "特に意識していない",
 ];
 
+// ---- 質問定義の型 ----
+
 /**
- * 質問定義のフォーマット
- *   type     : "radio" | "checkbox" | "text" | "paragraph" | "scale"
- *   title    : 質問文
- *   choices  : 選択肢（radio / checkbox のみ）
- *   other    : 「その他」欄を表示するか（radio / checkbox のみ）
- *   bounds   : [下限, 上限]（scale のみ）
- *   labels   : [下限ラベル, 上限ラベル]（scale のみ）
- *   helpText : 質問文の下に表示する補足説明（任意）
- *   required : 必須かどうか
+ * 質問定義。配列の順にフォームへ並ぶ。
+ * @typedef {Object} Question
+ * @property {"radio" | "checkbox" | "text" | "paragraph" | "scale"} type 回答形式
+ * @property {string} title 質問文
+ * @property {readonly string[]} [choices] 選択肢（radio / checkbox のみ）
+ * @property {boolean} [other] その他の自由入力欄を表示するか（radio / checkbox のみ）
+ * @property {[number, number]} [bounds] 下限と上限（scale のみ）
+ * @property {[string, string]} [labels] 下限ラベルと上限ラベル（scale のみ）
+ * @property {string} [helpText] 質問文の下に表示する補足説明
+ * @property {boolean} [required] 必須かどうか（省略時は任意）
+ */
+
+/**
+ * セクション（ページ区切り）の定義。
+ * @typedef {Object} Section
+ * @property {string} title セクションのタイトル
+ * @property {string} [helpText] セクションの説明文
  */
 
 // ---- 社内セクション ----
+
+/**
+ * 社内PJ セクションのページ区切り。
+ * @type {Section}
+ */
 const INTERNAL_SECTION = {
   title: "社内PJの方への質問",
   helpText: "社内で配布されたClaudeCodeの利用状況について伺います。",
 };
 
+/**
+ * 社内PJ 向けの設問。
+ * @type {Question[]}
+ */
 const INTERNAL_QUESTIONS = [
   {
     type: "radio",
@@ -326,11 +432,20 @@ const INTERNAL_QUESTIONS = [
 ];
 
 // ---- 外部案件セクション ----
+
+/**
+ * 外部案件セクションのページ区切り。
+ * @type {Section}
+ */
 const EXTERNAL_SECTION = {
   title: "外部案件の方への質問",
   helpText: "守秘義務の範囲で、話せる内容のみご回答ください。",
 };
 
+/**
+ * 外部案件向けの設問。
+ * @type {Question[]}
+ */
 const EXTERNAL_QUESTIONS = [
   {
     type: "text",
