@@ -16,13 +16,23 @@ const FORM_DESCRIPTION = [
   "・利用状況や困りごとを踏まえた、ナレッジ記事のテーマ選定",
   "・社内マーケットプレイス（スキル・プラグイン）の整備・優先度の決定",
   "・AIラボチームのサポート計画と、AI活用の進捗報告",
-  "個人の評価には使用しません。",
+  "",
+  "【匿名性について】",
+  "回答は匿名可能です。メールアドレスとPJ名の記入は任意で、個人の評価や回答者の特定には使用しません。",
 ].join("\n");
 
 // ---- スプレッドシート ----
 const TAB_INTERNAL = "社内";
 const TAB_EXTERNAL = "外部案件";
-const BASE_HEADERS = ["タイムスタンプ", "メールアドレス"];
+// ---- メールアドレス（任意）----
+// Google フォーム標準のメール収集は「収集する＝必須」しか選べないため、
+// 標準収集はオフにし、任意入力のテキスト項目として先頭に置く。
+const EMAIL_TITLE = "メールアドレス（任意）";
+const EMAIL_HELP =
+  "回答は匿名でも構いません。記入いただいた場合は、回答内容について詳しく伺いたいときの連絡先としてのみ使用します。";
+const EMAIL_VALIDATION_MESSAGE = "メールアドレスの形式で入力してください";
+
+const BASE_HEADERS = ["タイムスタンプ", EMAIL_TITLE];
 // フォーム再構築で不要になった旧「フォームの回答 N」シートに付ける接尾辞（回答がある場合のみ改名して保持）
 const ARCHIVED_SHEET_SUFFIX = "（旧）";
 
@@ -38,6 +48,7 @@ const EXTERNAL_LABEL = "外部案件";
 // ---- トリガー / スクリプトプロパティ ----
 const TRIGGER_HANDLER = "onSubmit";
 const PROP = {
+  EMAIL_ID: "EMAIL_ID",
   AFFIL_ID: "AFFIL_ID",
   INT_IDS: "INT_IDS",
   EXT_IDS: "EXT_IDS",
@@ -58,6 +69,16 @@ const PHASES = [
   "日々の業務改善（定型作業など）",
   "特になし",
   "その他",
+];
+// 設問5-2（社内）: ClaudeCode で短縮できた時間の使い道
+const TIME_USAGE = [
+  "仕様・設計の検討",
+  "生成コードのレビュー・理解",
+  "テスト・品質確認",
+  "学習・技術調査",
+  "追加の実装タスク",
+  "他の業務・案件",
+  "特に意識していない",
 ];
 
 /**
@@ -89,8 +110,9 @@ const INTERNAL_QUESTIONS = [
   {
     type: "text",
     title:
-      "1. 関わっているPJ名もしくはPJの概要を教えてください（例: ナレッジベース共有サービス）",
-    required: true,
+      "1. 関わっているPJ名もしくはPJの概要を教えてください（任意 例: ナレッジベース共有サービス）",
+    helpText:
+      "PJ名を出したくない場合は、PJの種類やフェーズ（例: 新規Webサービスの実装フェーズ）だけでも構いません。",
   },
   {
     type: "radio",
@@ -147,6 +169,13 @@ const INTERNAL_QUESTIONS = [
       "5-1. 変化があった方は、具体的な事例（例: 以前と比べて〇〇のタスク完了速度が上がった）をお教えください。",
   },
   {
+    type: "checkbox",
+    title:
+      "5-2. 質問5で変化があった方は、ClaudeCodeで短縮できた時間を主に何に使っていますか？（複数選択可）",
+    choices: TIME_USAGE,
+    other: true,
+  },
+  {
     type: "radio",
     title:
       "6. ClaudeCodeの利用により、普段触れない言語や技術へのチャレンジが増えましたか？",
@@ -169,21 +198,40 @@ const INTERNAL_QUESTIONS = [
   {
     type: "radio",
     title:
-      "9. 周囲のメンバーへClaudeCodeの使い方を共有・推薦したことはありますか？",
+      "9. 前回アンケート（2026年4月実施）の頃と比べて、AIとの向き合い方・考え方は変わりましたか？",
+    helpText:
+      "回答は匿名のため前回の回答との突き合わせは行いません。この半年のご自身の体感でお答えください。",
+    choices: [
+      "より積極的に使うようになった",
+      "変わらない",
+      "より慎重に使うようになった",
+      "前回は回答していない・分からない",
+    ],
+    required: true,
+  },
+  {
+    type: "paragraph",
+    title:
+      "9-1. 質問9で「変わった」と回答した方は、変わった理由やきっかけを教えてください。",
+  },
+  {
+    type: "radio",
+    title:
+      "10. 周囲のメンバーへClaudeCodeの使い方を共有・推薦したことはありますか？",
     choices: YN,
     required: true,
   },
   {
     type: "radio",
     title:
-      "10. ClaudeCodeの導入によって、チームの開発フロー（設計、コーディング、レビュー、ドキュメント作成など）に変化はありましたか？",
+      "11. ClaudeCodeの導入によって、チームの開発フロー（設計、コーディング、レビュー、ドキュメント作成など）に変化はありましたか？",
     choices: ["全く変化無し", "少し変化あり", "大幅に変化あり"],
     required: true,
   },
   {
     type: "checkbox",
     title:
-      "11. ClaudeCodeの利用に関して、セキュリティや品質面で懸念があれば、すべて選択してください。",
+      "12. ClaudeCodeの利用に関して、セキュリティや品質面で懸念があれば、すべて選択してください。",
     choices: [
       "機密情報・顧客情報を入力してしまうリスク",
       "生成コードの品質・バグ",
@@ -198,11 +246,11 @@ const INTERNAL_QUESTIONS = [
   {
     type: "paragraph",
     title:
-      "11-1. 質問11で懸念を選択した方は、具体的な内容や背景（例: 〇〇の案件で△△が起きそう）を教えてください。",
+      "12-1. 質問12で懸念を選択した方は、具体的な内容や背景（例: 〇〇の案件で△△が起きそう）を教えてください。",
   },
   {
     type: "checkbox",
-    title: "12. よく使うClaudeCodeの機能をすべて選択してください。",
+    title: "13. よく使うClaudeCodeの機能をすべて選択してください。",
     choices: [
       "スキル",
       "マーケットプレイスのプラグイン",
@@ -218,7 +266,7 @@ const INTERNAL_QUESTIONS = [
   {
     type: "checkbox",
     title:
-      "13. 開発プロセスにおいて、ClaudeCodeが最も役立ったフェーズをすべて選択してください。",
+      "14. 開発プロセスにおいて、ClaudeCodeが最も役立ったフェーズをすべて選択してください。",
     choices: PHASES,
     other: true,
     required: true,
@@ -226,12 +274,12 @@ const INTERNAL_QUESTIONS = [
   {
     type: "paragraph",
     title:
-      "13-1. 質問13で選択したフェーズ（最も役立った点）について、具体的な事例を教えてください。",
+      "14-1. 質問14で選択したフェーズ（最も役立った点）について、具体的な事例を教えてください。",
   },
   {
     type: "paragraph",
     title:
-      "14. AIレポートスキルの実行結果があれば、教えられる範囲で結果を教えてください（任意）",
+      "15. AIレポートスキルの実行結果があれば、教えられる範囲で結果を教えてください（任意）",
     helpText: [
       "【AIレポートの作り方】",
       "1. ターミナルで Claude Code を起動し、セッションを開きます。",
@@ -244,13 +292,13 @@ const INTERNAL_QUESTIONS = [
   {
     type: "paragraph",
     title:
-      "15. ClaudeCodeの利用で困っていること・つまずいていることがあれば教えてください。（任意）",
+      "16. ClaudeCodeの利用で困っていること・つまずいていることがあれば教えてください。（任意）",
     helpText:
       "使い方が分からない機能、うまく動かない場面、運用ルールで迷っていることなど、どんな内容でも構いません。ナレッジ記事のテーマ選定に活用します。",
   },
   {
     type: "checkbox",
-    title: "16. AIラボチームに期待するサポートをすべて選択してください。",
+    title: "17. AIラボチームに期待するサポートをすべて選択してください。",
     helpText: [
       "AIラボチームは、ClaudeCodeをはじめとするAIツールの社内活用を推進するチームです。ハーネス（開発環境・ルール）の整備、スキル・プラグインの提供、ナレッジ記事の発信などを行っています。",
       "GitHub：https://github.com/dreamcareer/claude-marketplace",
@@ -268,12 +316,12 @@ const INTERNAL_QUESTIONS = [
   {
     type: "paragraph",
     title:
-      "17. その他 ClaudeCodeを活用して「うまくいったプロジェクト」や「具体的な改善事例」があれば、簡単にお教えください。（任意）",
+      "18. その他 ClaudeCodeを活用して「うまくいったプロジェクト」や「具体的な改善事例」があれば、簡単にお教えください。（任意）",
   },
   {
     type: "paragraph",
     title:
-      "18. 他のLLM（例: Copilot, Gemini, Codexなど）とClaudeCodeを比べたときに、特に思うことがあれば記載してください。（任意）",
+      "19. 他のLLM（例: Copilot, Gemini, Codexなど）とClaudeCodeを比べたときに、特に思うことがあれば記載してください。（任意）",
   },
 ];
 
@@ -323,10 +371,24 @@ const EXTERNAL_QUESTIONS = [
     labels: ["変化なし", "大幅に向上"],
     required: true,
   },
+  // 6, 7 は前回アンケート（外部案件の方も同じ設問に回答）との比較用。社内向け 7, 8 と同じ趣旨の文言にする
+  {
+    type: "radio",
+    title: "6. AIツールの利用は、自身のスキルアップに貢献していると感じますか？",
+    choices: YN,
+    required: true,
+  },
+  {
+    type: "radio",
+    title:
+      "7. AIツールへの依存により、自分のスキルアップが滞っている、あるいは不安だと感じますか？",
+    choices: YN,
+    required: true,
+  },
   {
     type: "paragraph",
     title:
-      "6. 社内にも取り入れたいと思った使い方・ルール・ツールがあれば教えてください。",
+      "8. 社内にも取り入れたいと思った使い方・ルール・ツールがあれば教えてください。",
     helpText: [
       "いただいた内容は、AIの社内活用を広める取り組みの一環として整備している社内マーケットプレイス（スキル・プラグインの配布基盤）への導入を検討する参考にさせていただきます。",
       "GitHub：https://github.com/dreamcareer/claude-marketplace",
@@ -334,6 +396,6 @@ const EXTERNAL_QUESTIONS = [
   },
   {
     type: "paragraph",
-    title: "7. 客先でのAI利用で困っていること・制約があれば教えてください。",
+    title: "9. 客先でのAI利用で困っていること・制約があれば教えてください。",
   },
 ];
