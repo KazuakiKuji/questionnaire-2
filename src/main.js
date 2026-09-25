@@ -1,21 +1,15 @@
 /**
  * ===== 実行関数 =====
- *   onOpen       : スプレッドシートを開いた時にカスタムメニューを追加する
- *   createSurvey : フォームを作成または更新し、このスプレッドシートを回答先にする
+ *   createSurvey : フォームを作成または更新し、このスプレッドシートを回答先にする（GAS エディタから実行）
  *   onSubmit     : フォーム送信時トリガー（createSurvey が自動登録）
+ *
+ * アンケート実施中は createSurvey を実行しない（既存回答が失われるため）。
+ * 誤操作を防ぐため、スプレッドシートのカスタムメニューは用意していない。
  *
  * このスクリプトは回答用スプレッドシートに紐づくコンテナバインドスクリプト。
  * スプレッドシートは再生成せず、常に紐づいているものを更新する。
  * フォームは「このスプレッドシートに連携済みのもの → 同じフォルダのもの → 新規作成」の順で決める。
  */
-
-/** スプレッドシートを開いた時にメニューを追加する。 */
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu(MENU_NAME)
-    .addItem(MENU_ITEM_CREATE, "createSurvey")
-    .addToUi();
-}
 
 /** フォームを作成または更新する。何度実行しても同じ結果になる。 */
 function createSurvey() {
@@ -62,7 +56,7 @@ function createSurvey() {
   Logger.log(`フォーム編集URL: ${form.getEditUrl()}`);
   Logger.log(`回答URL: ${form.getPublishedUrl()}`);
   Logger.log(`スプレッドシート: ${ss.getUrl()}`);
-  ss.toast(`${formCreated ? "作成" : "更新"}しました: ${form.getTitle()}`, MENU_NAME, 10);
+  ss.toast(`${formCreated ? "作成" : "更新"}しました: ${form.getTitle()}`, FORM_TITLE, 10);
 }
 
 /** 送信時トリガー: 所属に応じて「社内」「外部案件」タブへ 1 行追記する。 */
