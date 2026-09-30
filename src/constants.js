@@ -486,3 +486,91 @@ const EXTERNAL_QUESTIONS = [
     title: "9. 客先でのAI利用で困っていること・制約があれば教えてください。",
   },
 ];
+
+// ---- 分析 ----
+
+/**
+ * 集計結果を書き出すスプレッドシートのタブ名。buildAnalysis が毎回作り直す。
+ * @type {string}
+ */
+const TAB_ANALYSIS = "分析";
+
+/**
+ * 前回アンケート（2026年4月実施）の回答スプレッドシート ID。前回比較の集計元。
+ * https://docs.google.com/spreadsheets/d/1qztNPxo-hMuxtmuR5_vyKqWz-XhYU7plS4E1BSvagbo/
+ * @type {string}
+ */
+const PREV_SPREADSHEET_ID = "1qztNPxo-hMuxtmuR5_vyKqWz-XhYU7plS4E1BSvagbo";
+
+/**
+ * 前回アンケートの回答が入っているシート名。
+ * @type {string}
+ */
+const PREV_SHEET_NAME = "フォームの回答 1";
+
+/**
+ * 前回アンケートは所属で分岐していなかったため、「チーム名」がこのいずれかの回答を
+ * 社内PJ 相当として扱う（それ以外は外部案件・未所属）。
+ * @type {readonly string[]}
+ */
+const PREV_INTERNAL_TEAMS = ["塩見チーム", "新井チーム", "吉川チーム"];
+
+/**
+ * 設問 5（速度変化, 1〜5 のスケール）で「向上した」とみなす下限値。
+ * 前回は はい/いいえ の 2 択だったため、前回の「はい」と比較する際にこの閾値で 2 値化する。
+ * @type {number}
+ */
+const SPEED_IMPROVED_MIN = 4;
+
+/**
+ * 列の特定に使う設問タイトルの先頭文字列。フォームの設問番号を変えたらここも合わせる。
+ * cur: 「社内」タブ / prev: 前回スプレッドシート / ext: 「外部案件」タブ
+ */
+const Q = {
+  cur: {
+    email: "メールアドレス",
+    team: "チーム名",
+    hist: "2. ",
+    hours: "3. ",
+    speed: "5. ",
+    timeUse: "5-2.",
+    chal: "6. ",
+    skill: "7. ",
+    worry: "8. ",
+    mind: "9. ",
+    mindWhy: "9-1.",
+    share: "10. ",
+    flow: "11. ",
+    concern: "12. ",
+    feats: "13. ",
+    phases: "14. ",
+    trouble: "16. ",
+    support: "17. ",
+    cases: "18. ",
+    others: "19. ",
+  },
+  prev: {
+    email: "メールアドレス",
+    team: "チーム名",
+    hist: "2. ",
+    hours: "3. ",
+    speed: "4. ",
+    chal: "5. ",
+    skill: "6. ",
+    worry: "7. ",
+    share: "8. ",
+    flow: "9. ",
+    concern: "10. ",
+    phases: "11. ",
+  },
+  ext: {
+    rule: "2. ",
+    tools: "3. ",
+    phases: "4. ",
+    speed: "5. ",
+    skill: "6. ",
+    worry: "7. ",
+    wish: "8. ",
+    trouble: "9. ",
+  },
+};

@@ -1,6 +1,13 @@
 {
   "scriptId": "1tYQ1sKdUbeMnHmOgqMZEmJ-8jgPQkJwUaKRqEnkonef50i3-1Q5nucM-",
-  "parentId": ["13KeptfhZ5IddqM5wJczvA8NYXwXDwaskKdGlCPjykds"],
+  "parentId": [
+    "13KeptfhZ5IddqM5wJczvA8NYXwXDwaskKdGlCPjykds"
+  ],
   "rootDir": "src",
-  "filePushOrder": ["src/constants.js", "src/utils.js", "src/main.js"]
+  "filePushOrder": [
+    "src/constants.js",
+    "src/utils.js",
+    "src/analysis.js",
+    "src/main.js"
+  ]
 }
