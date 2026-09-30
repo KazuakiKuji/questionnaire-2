@@ -48,10 +48,11 @@ function buildSummaryTab_(ss, cur, ext, prev) {
     teams.map((t) => `COUNTIFS(${prev.r(key)},"<>",${prev.r("team")},"${t}")`).join("+");
 
   // ---- 1. 概要 ----
-  put(
-    "1. 概要（数式で自動更新。設問や選択肢を変えたときだけ buildAnalysis を再実行）",
+  const sec1 = put(
+    "1. 概要",
     ["項目", "値", "備考"],
     [
+      ["この表を組み立てた日", new Date(), "数値は数式で自動更新される。設問や選択肢を変えたときだけ buildAnalysis を再実行する"],
       ["今回 回答数（社内）", `=COUNTA(${cur.r("email")})`, `「${TAB_INTERNAL}」タブ`],
       ["今回 回答数（外部案件）", `=COUNTA(${ext.r("email")})`, `「${TAB_EXTERNAL}」タブ`],
       ["前回 回答数（全体）", `=COUNTA(${prev.r("email")})`, "2026年4月実施。所属で分岐していなかったため全員が同じ設問に回答"],
@@ -61,6 +62,7 @@ function buildSummaryTab_(ss, cur, ext, prev) {
       ["今回 チーム別: その他", `=COUNTA(${cur.r("team")})-${choicesOf_(INTERNAL_QUESTIONS, Q.cur.team).map((t) => `COUNTIF(${cur.r("team")},"${t}")`).join("-")}`, "選択肢以外を入力した人"],
     ],
   );
+  sheet.getRange(sec1.body, 2).setNumberFormat(DATE_FORMAT);
 
   // ---- 2. 主要指標の前回比較 ----
   // 各行: [指標, 今回k, 今回n, 今回%, 前回全体k, n, %, 前回社内k, n, %, 差分, 備考]
@@ -68,14 +70,14 @@ function buildSummaryTab_(ss, cur, ext, prev) {
     label,
     `=${curCount}`,
     `=COUNTA(${cur.r(key)})`,
-    `=IFERROR(B${r}/C${r},"-")`,
+    `=IFERROR(ROUND(B${r}/C${r},3),"-")`,
     `=${prevCount}`,
     `=COUNTA(${prev.r(key)})`,
-    `=IFERROR(E${r}/F${r},"-")`,
+    `=IFERROR(ROUND(E${r}/F${r},3),"-")`,
     `=${prevIntCountF}`,
     `=${prevIntAnswered(key)}`,
-    `=IFERROR(H${r}/I${r},"-")`,
-    `=IFERROR(D${r}-J${r},"-")`,
+    `=IFERROR(ROUND(H${r}/I${r},3),"-")`,
+    `=IFERROR(ROUND(D${r}-J${r},3),"-")`,
     note || "",
   ];
   const simple = (label, key, curCrit, prevCrit, note) =>
@@ -126,11 +128,11 @@ function buildSummaryTab_(ss, cur, ext, prev) {
       return [
         c,
         `=COUNTIF(${cur.r(key)},"${crit(c)}")`,
-        `=IFERROR(B${r}/B${totalRow},"-")`,
+        `=IFERROR(ROUND(B${r}/B${totalRow},3),"-")`,
         `=COUNTIF(${prev.r(key)},"${crit(c)}")`,
-        `=IFERROR(D${r}/D${totalRow},"-")`,
+        `=IFERROR(ROUND(D${r}/D${totalRow},3),"-")`,
         `=${prevIntCount(key, crit(c))}`,
-        `=IFERROR(F${r}/F${totalRow},"-")`,
+        `=IFERROR(ROUND(F${r}/F${totalRow},3),"-")`,
       ];
     });
     rows.push(["回答数", `=COUNTA(${cur.r(key)})`, "", `=COUNTA(${prev.r(key)})`, "", `=${prevIntAnswered(key)}`, ""]);
@@ -151,7 +153,7 @@ function buildSummaryTab_(ss, cur, ext, prev) {
     const crit = (c) => (multi ? `*${c}*` : c);
     const n = choices.length + (extra ? 1 : 0);
     const totalRow = row + 2 + n;
-    const rows = choices.map((c, i) => [c, `=COUNTIF(${cur.r(key)},"${crit(c)}")`, `=IFERROR(B${row + 2 + i}/B${totalRow},"-")`]);
+    const rows = choices.map((c, i) => [c, `=COUNTIF(${cur.r(key)},"${crit(c)}")`, `=IFERROR(ROUND(B${row + 2 + i}/B${totalRow},3),"-")`]);
     if (extra) {
       const r = row + 2 + choices.length;
       // 定義済み選択肢に一致しない回答（「その他」の自由入力）
@@ -161,7 +163,7 @@ function buildSummaryTab_(ss, cur, ext, prev) {
         multi
           ? `=COUNTIFS(${cur.r(key)},"<>",${choices.map((c) => `${cur.r(key)},"<>*${c}*"`).join(",")})`
           : `=COUNTA(${cur.r(key)})-(${known})`,
-        `=IFERROR(B${r}/B${totalRow},"-")`,
+        `=IFERROR(ROUND(B${r}/B${totalRow},3),"-")`,
       ]);
     }
     rows.push(["回答数", `=COUNTA(${cur.r(key)})`, ""]);
@@ -185,7 +187,7 @@ function buildSummaryTab_(ss, cur, ext, prev) {
     const rows = choices.map((c, i) => {
       const r = row + 2 + i;
       const g = `${cur.r(key)},"${c}"`;
-      const pct = (k, crit) => `=IFERROR(COUNTIFS(${g},${cur.r(k)},"${crit}")/B${r},"-")`;
+      const pct = (k, crit) => `=IFERROR(ROUND(COUNTIFS(${g},${cur.r(k)},"${crit}")/B${r},3),"-")`;
       return [
         c,
         `=COUNTIF(${cur.r(key)},"${c}")`,
@@ -218,7 +220,7 @@ function buildSummaryTab_(ss, cur, ext, prev) {
   const extOnly = (title, key, choices, multi) => {
     const crit = (c) => (multi ? `*${c}*` : c);
     const totalRow = row + 2 + choices.length;
-    const rows = choices.map((c, i) => [c, `=COUNTIF(${ext.r(key)},"${crit(c)}")`, `=IFERROR(B${row + 2 + i}/B${totalRow},"-")`]);
+    const rows = choices.map((c, i) => [c, `=COUNTIF(${ext.r(key)},"${crit(c)}")`, `=IFERROR(ROUND(B${row + 2 + i}/B${totalRow},3),"-")`]);
     rows.push(["回答数", `=COUNTA(${ext.r(key)})`, ""]);
     return put(title, ["選択肢", "件数", multi ? "選択率" : "割合"], rows, [2]);
   };
@@ -229,6 +231,7 @@ function buildSummaryTab_(ss, cur, ext, prev) {
   sheet.setColumnWidth(1, 360);
   for (let c = 2; c <= 12; c += 1) sheet.setColumnWidth(c, 110);
   sheet.setColumnWidth(12, 420);
+  finishSheet_(sheet);
 }
 
 // ---------------------------------------------------------------------------
@@ -248,9 +251,11 @@ function buildDetailTab_(ss, cur, ext, prev) {
   const prevLookup = (key) => `VLOOKUP(${A},${prev.lookup},${prev.lookupIndex(key)},FALSE)`;
   const arr = (expr) => `=ARRAYFORMULA(IF(${A}="","",IFERROR(${expr},"")))`;
   const change = (key) => arr(`${prevLookup(key)}&" → "&${curLookup(key)}&IF(${prevLookup(key)}<>${curLookup(key)}," ＊","")`);
-  sheet.getRange(1, 1).setValue("7-1. 両回とも回答した人の変化（＊ = 回答が変わった。回答が増えると自動で行が伸びる）").setFontWeight("bold").setFontSize(11);
+  sheet.getRange(1, 1).setValue("7-1. 両回とも回答した人の変化（＊ = 回答が変わった。回答が増えると自動で行が伸びる）").setFontWeight("bold");
   const header7 = ["メールアドレス", "チーム(今回)", "利用時間 前→今", "増減", "貢献 前→今", "不安 前→今", "共有 前→今", "チャレンジ 前→今", "フロー 前→今", "考え方の変化(今回 設問9)"];
   sheet.getRange(3, 1, 1, header7.length).setValues([header7]).setFontWeight("bold").setBackground("#efefef");
+  // 枠線は現時点の行数分に引く（回答が増えて行が伸びた分は buildAnalysis の再実行で引き直す）
+  decorateTable_(sheet.getRange(3, 1, Math.max(countMatched_(cur, prev), 1) + 1, header7.length));
   sheet.getRange(first, 1, 1, header7.length).setValues([
     [
       `=IFERROR(FILTER(${cur.r("email")},COUNTIF(${prev.r("email")},${cur.r("email")})>0),"（該当なし）")`,
@@ -293,19 +298,22 @@ function buildDetailTab_(ss, cur, ext, prev) {
   let c = 15;
   texts.forEach(([title, t, key]) => {
     const label = t === cur ? t.r("team") : `IF(${t.r(key)}<>"","${TAB_EXTERNAL}","")`;
-    sheet.getRange(1, c).setValue(title).setFontWeight("bold").setFontSize(11);
+    sheet.getRange(1, c).setValue(title).setFontWeight("bold");
     sheet.getRange(3, c, 1, 2).setValues([["チーム / 区分", "内容"]]).setFontWeight("bold").setBackground("#efefef");
     sheet.getRange(first, c).setFormula(`=IFERROR(FILTER({${label},${t.r(key)}},${t.r(key)}<>""),"（該当なし）")`);
     sheet.setColumnWidth(c, 110);
     sheet.setColumnWidth(c + 1, 480);
-    sheet.getRange(first, c + 1, 200, 1).setWrap(true);
+    decorateTable_(sheet.getRange(3, c, Math.max(countNonEmpty_(t, key), 1) + 1, 2));
     c += 3;
   });
 
+  // 行が伸びても折り返されるよう、明細の列は末尾まで折り返し設定にしておく
+  sheet.getRange(first, 1, sheet.getMaxRows() - first + 1, c).setWrap(true).setVerticalAlignment("top");
   sheet.setFrozenRows(3);
   sheet.setColumnWidth(1, 260);
   sheet.setColumnWidth(12, 240);
   sheet.setColumnWidth(13, 260);
+  finishSheet_(sheet);
 }
 
 // ---------------------------------------------------------------------------
@@ -319,7 +327,8 @@ function copyPrevResponses_(ss) {
   const values = src.getDataRange().getValues();
   const dst = resetSheet_(ss, TAB_PREV);
   dst.getRange(1, 1, values.length, values[0].length).setValues(values);
-  dst.getRange(1, 1).setNote(`${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm")} に前回スプレッドシートから写した値。集計の参照元なので編集しない。`);
+  dst.getRange(1, 1).setNote(`${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy年MM月dd日")} に前回スプレッドシートから写した値。集計の参照元なので編集しない。`);
+  if (values.length > 1) dst.getRange(2, 1, values.length - 1, 1).setNumberFormat(DATE_FORMAT);
   dst.setFrozenRows(1);
   dst.hideSheet();
   return dst;
@@ -349,6 +358,7 @@ function tableRefs_(sheet, prefixes) {
   const emailCol = cols.email;
   const lastCol = Math.max(...Object.values(cols));
   return {
+    sheet,
     name,
     cols,
     r: (key) => `${name}!$${colLetter_(cols[key])}$2:$${colLetter_(cols[key])}`,
@@ -397,7 +407,8 @@ function resetSheet_(ss, name) {
  */
 function writeSection_(sheet, row, title, header, rows, pctCols, startCol) {
   const c0 = startCol || 1;
-  sheet.getRange(row, c0).setValue(title).setFontWeight("bold").setFontSize(11);
+  const top = row + 1; // 表（ヘッダー）の開始行
+  sheet.getRange(row, c0).setValue(title).setFontWeight("bold");
   row += 1;
   if (header && header.length) {
     sheet.getRange(row, c0, 1, header.length).setValues([header]).setFontWeight("bold").setBackground("#efefef");
@@ -407,7 +418,8 @@ function writeSection_(sheet, row, title, header, rows, pctCols, startCol) {
     const width = Math.max(...rows.map((r) => r.length), header ? header.length : 1);
     const norm = rows.map((r) => [...r, ...Array(width - r.length).fill("")]);
     sheet.getRange(row, c0, norm.length, width).setValues(norm);
-    (pctCols || []).forEach((c) => sheet.getRange(row, c0 + c, norm.length, 1).setNumberFormat("0.0%"));
+    (pctCols || []).forEach((c) => sheet.getRange(row, c0 + c, norm.length, 1).setNumberFormat(PERCENT_FORMAT));
+    decorateTable_(sheet.getRange(top, c0, norm.length + (header && header.length ? 1 : 0), width));
     row += norm.length;
   } else {
     sheet.getRange(row, c0).setValue("（該当なし）").setFontColor("#888888");
@@ -435,12 +447,20 @@ function chartPlacer_(sheet) {
     const row = Math.max(sec.header, nextFree[slot]);
     const builder = sheet.newChart().setChartType(type).setPosition(row, anchors[slot], 0, 0);
     cols.forEach((c) => builder.addRange(sheet.getRange(sec.header, c, n + 1, 1)));
+    builder.setNumHeaders(1); // 先頭行（表のヘッダー）を系列名として扱い、凡例に出す
+    const series = {};
+    cols.slice(1).forEach((c, i) => {
+      series[i] = { labelInLegend: String(sheet.getRange(sec.header, c).getValue()) };
+    });
     builder
+      .setOption("series", series)
+      .setOption("fontName", FONT_FAMILY)
+      .setOption("titleTextStyle", { fontName: FONT_FAMILY, fontSize: FONT_SIZE + 2 })
       .setOption("title", title)
       .setOption("width", 560)
       .setOption("height", height)
       .setOption("useFirstColumnAsDomain", true)
-      .setOption("legend", { position: type === Charts.ChartType.PIE ? "right" : "bottom" });
+      .setOption("legend", { position: type === Charts.ChartType.PIE ? "right" : "bottom", textStyle: { fontName: FONT_FAMILY, fontSize: FONT_SIZE } });
     if (o.percent) {
       const axis = { format: "percent", minValue: 0, maxValue: 1 };
       builder.setOption(type === Charts.ChartType.BAR ? "hAxis" : "vAxis", axis);
@@ -454,4 +474,41 @@ function chartPlacer_(sheet) {
     bar: (sec, title, cols, opts) => place(Charts.ChartType.BAR, sec, title, cols, opts),
     pie: (sec, title, cols, opts) => place(Charts.ChartType.PIE, sec, title, cols, opts),
   };
+}
+
+// ---------------------------------------------------------------------------
+// 見た目のヘルパー
+// ---------------------------------------------------------------------------
+
+/** 表（ヘッダー + データ行）の枠線を全て引き、セルを折り返し表示にする。 */
+function decorateTable_(range) {
+  range.setBorder(true, true, true, true, true, true, BORDER_COLOR, SpreadsheetApp.BorderStyle.SOLID);
+  range.setWrap(true).setVerticalAlignment("top");
+}
+
+/** シート全体のフォントを統一する。書き終わった後に呼ぶ。 */
+function finishSheet_(sheet) {
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).setFontFamily(FONT_FAMILY).setFontSize(FONT_SIZE);
+}
+
+/** 今回・前回の両方に同じメールアドレスがある回答者の人数（枠線を引く行数の算出に使う）。 */
+function countMatched_(cur, prev) {
+  const prevSet = new Set(columnValues_(prev, "email"));
+  return columnValues_(cur, "email").filter((e) => prevSet.has(e)).length;
+}
+
+/** 指定列に回答がある行数（枠線を引く行数の算出に使う）。 */
+function countNonEmpty_(t, key) {
+  return columnValues_(t, key).length;
+}
+
+/** tableRefs_ の結果から、指定列の空でない値（文字列化・トリム済み）を返す。 */
+function columnValues_(t, key) {
+  const last = t.sheet.getLastRow();
+  if (last < 2) return [];
+  return t.sheet
+    .getRange(2, t.cols[key], last - 1, 1)
+    .getValues()
+    .map((r) => String(r[0]).trim())
+    .filter((v) => v !== "");
 }

@@ -588,3 +588,35 @@ const Q = {
     trouble: "9. ",
   },
 };
+
+// ---- 分析タブの見た目 ----
+
+/**
+ * 「分析」「分析_明細」タブのフォント。
+ * @type {string}
+ */
+const FONT_FAMILY = "Arial";
+
+/**
+ * 「分析」「分析_明細」タブの文字サイズ。
+ * @type {number}
+ */
+const FONT_SIZE = 12;
+
+/**
+ * 表の枠線の色（Google スプレッドシートの「暗いグレー 1」）。
+ * @type {string}
+ */
+const BORDER_COLOR = "#b7b7b7";
+
+/**
+ * 割合セルの表示形式。小数第一位まで（小数第二位を四捨五入）。数式側でも ROUND で丸める。
+ * @type {string}
+ */
+const PERCENT_FORMAT = "0.0%";
+
+/**
+ * 日付セルの表示形式。
+ * @type {string}
+ */
+const DATE_FORMAT = "yyyy年mm月dd日";
