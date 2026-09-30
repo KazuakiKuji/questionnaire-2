@@ -490,10 +490,23 @@ const EXTERNAL_QUESTIONS = [
 // ---- 分析 ----
 
 /**
- * 集計結果を書き出すスプレッドシートのタブ名。buildAnalysis が毎回作り直す。
+ * 集計表とグラフを置くスプレッドシートのタブ名。buildAnalysis が毎回作り直す。
+ * 中身は数式なので、回答が増えると自動で更新される。
  * @type {string}
  */
 const TAB_ANALYSIS = "分析";
+
+/**
+ * 行数が回答に応じて伸びる一覧（両回回答者の変化・自由記述）を置くタブ名。
+ * @type {string}
+ */
+const TAB_ANALYSIS_DETAIL = "分析_明細";
+
+/**
+ * 前回アンケートの回答を値として写しておく非表示タブ名。「分析」タブの数式の参照元。
+ * @type {string}
+ */
+const TAB_PREV = "前回_2026-04";
 
 /**
  * 前回アンケート（2026年4月実施）の回答スプレッドシート ID。前回比較の集計元。
@@ -564,6 +577,7 @@ const Q = {
     phases: "11. ",
   },
   ext: {
+    email: "メールアドレス",
     rule: "2. ",
     tools: "3. ",
     phases: "4. ",
